@@ -1,5 +1,7 @@
 ﻿@page "/articles"
+
 @inject ISender Sender
+@inject NavigationManager Navigation
 @attribute [StreamRendering]
 @rendermode InteractiveServer
 
@@ -36,16 +38,41 @@ else
 }
 
 @code {
-    private List<Article> articles = new List<Article>();
+    private List<Article> articles = new();
+    private HubConnection? hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
-        // Simulate asynchronous loading to demonstrate streaming rendering
-        //await Task.Delay(1000);
+        await LoadData();
 
+        // SignalR kapcsolat létrehozása és eseménykezelő beállítása
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.BaseUri + "datahub") // A SignalR Hub elérési útja
+            .Build();
+
+        hubConnection.On<string>("ReceiveUpdate", async (message) =>
+        {
+            Console.WriteLine("Frissítés érkezett: " + message);
+            await LoadData(); // 🔄 Újra betölti az adatokat
+            StateHasChanged(); // 📌 UI frissítése
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task LoadData()
+    {
         var result = await Sender.Send(new GetAllArticlesQuery());
         if (result is not null)
             articles = result;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
     }
 
 }
