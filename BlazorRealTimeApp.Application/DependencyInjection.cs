@@ -12,10 +12,10 @@ namespace BlazorRealTimeApp.Application
         // Extension method to add services to the container (kiterjesztési módszer)
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
-            //services.AddMediatR(configuration =>
-            //{
-            //    configuration.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
-            //});
+            services.AddMediatR(configuration =>
+            {
+                configuration.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
+            });
 
             return services;
         }

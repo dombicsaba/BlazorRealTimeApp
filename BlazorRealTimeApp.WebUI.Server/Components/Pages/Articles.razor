@@ -1,0 +1,51 @@
+﻿@page "/articles"
+@inject ISender Sender
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+
+<PageTitle>Articles</PageTitle>
+<h3>Articles</h3>
+
+@if (articles.Count == 0)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Content</th>
+                <th>Date Published</th>
+                <th>Is Published</th>                
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var article in articles)
+            {
+                <tr>
+                    <td>@article.Title</td>
+                    <td>@article.Content</td>
+                    <td>@article.DatePublished.ToShortDateString()</td>
+                    <td>@article.IsPublished</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Article> articles = new List<Article>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Simulate asynchronous loading to demonstrate streaming rendering
+        //await Task.Delay(1000);
+
+        var result = await Sender.Send(new GetAllArticlesQuery());
+        if (result is not null)
+            articles = result;
+    }
+
+}
