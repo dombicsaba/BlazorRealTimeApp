@@ -1,6 +1,9 @@
 using BlazorRealTimeApp.Application;
+using BlazorRealTimeApp.Application.Common.Interfaces;
 using BlazorRealTimeApp.Infrastructure;
 using BlazorRealTimeApp.WebUI.Server.Components;
+using BlazorRealTimeApp.WebUI.Server.Hubs;
+using BlazorRealTimeApp.WebUI.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,12 +11,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(); // Csak a Server modult adjuk hozzá
 
+// SignalR és az értesítõ szolgáltatás regisztrálása
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IRealTimeNotifier, SignalRNotifier>();
+
 // Register services
 // Dependency injection
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(configuration: builder.Configuration);
 
 var app = builder.Build();
+
+app.MapHub<DataHub>("/datahub");
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
