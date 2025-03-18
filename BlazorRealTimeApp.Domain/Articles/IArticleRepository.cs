@@ -8,5 +8,7 @@ namespace BlazorRealTimeApp.Domain.Articles
 {
     public interface IArticleRepository
     {
+        Task<List<Article>> GetAllArticlesAsync();
+        Task<Article?> GetArticleByIdAsync(int id);
     }
 }
