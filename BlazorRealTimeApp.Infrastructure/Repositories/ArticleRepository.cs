@@ -1,5 +1,7 @@
-﻿using BlazorRealTimeApp.Domain.Articles;
+﻿using BlazorRealTimeApp.Application.Common.Interfaces;
+using BlazorRealTimeApp.Domain.Articles;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,11 +12,15 @@ namespace BlazorRealTimeApp.Infrastructure.Repositories
 {
     public class ArticleRepository : IArticleRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+        private readonly ILogger _logger;
+        private readonly IRealTimeNotifier _notifier;
 
-        public ArticleRepository(ApplicationDbContext context)
+        public ArticleRepository(IDbContextFactory<ApplicationDbContext> contextFactory, IRealTimeNotifier notifier)
         {
-            _context = context;
+            _contextFactory = contextFactory;
+            _logger = Log.ForContext<ArticleRepository>();
+            _notifier = notifier;
         }
 
         public async Task<Article> EditArticleAsync(Article? updatedArticle)
@@ -23,8 +29,11 @@ namespace BlazorRealTimeApp.Infrastructure.Repositories
             {
                 throw new Exception("Article is null");
             }
+            
+            _logger.Information("Editing article: {updatedArticle}", updatedArticle);
 
-            var article = await _context.Articles.FirstOrDefaultAsync(x => x.Id == updatedArticle.Id);
+            using var context = _contextFactory.CreateDbContext();
+            var article = await context.Articles.FirstOrDefaultAsync(x => x.Id == updatedArticle.Id);
 
             if (article == null)
             {
@@ -37,19 +46,26 @@ namespace BlazorRealTimeApp.Infrastructure.Repositories
             article.IsPublished = updatedArticle.IsPublished;
             article.DateUpdated = DateTime.Now;
 
-            await _context.SaveChangesAsync();
-     
+            await context.SaveChangesAsync();
+            _logger.Information("Article with ID: {ArticleId} updated successfully", article.Id);
+            // Értesítse a klienseket a változásról
+            await _notifier.NotifyArticlesUpdated();
+
             return article;
         }
 
         public async Task<List<Article>> GetAllArticlesAsync()
         {
-            return await _context.Articles.ToListAsync();
+            _logger.Information("Getting all articles");
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Articles.ToListAsync();
         }
 
         public async Task<Article?> GetArticleByIdAsync(int id)
         {
-            return await _context.Articles.FindAsync(id);
+            _logger.Information("Getting article by id: {id}", id);
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Articles.FindAsync(id);
         }
     }
 }

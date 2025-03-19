@@ -3,6 +3,7 @@
 @inject ISender Sender
 @inject NavigationManager Navigation
 @inject ILogger<Articles> Logger
+@inject IJSRuntime JS
 @attribute [StreamRendering]
 @rendermode InteractiveServer
 
@@ -42,29 +43,75 @@ else
 
 @code {
     private List<Article> articles = new();
+    private HubConnection? hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
-        Logger.LogInformation("Initializing Articles component");
+        Logger.LogInformation("Articles.razor | Initializing Articles component");
+        Console.WriteLine("🔄 Articles.razor | Initializing Articles component"); // Kliens oldali log
 
         await LoadData();
-      
-        Logger.LogInformation("SignalR connection started");
+
+        Logger.LogInformation($"Articles.razor | Connecting to SignalR hub. URL: {Navigation.BaseUri}datahub");
+
+        // SignalR kapcsolat létrehozása és eseménykezelő beállítása
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.BaseUri + "datahub") // A SignalR Hub elérési útja
+            .Build();
+
+        hubConnection.On<string>("ReceiveUpdate", async (message) =>
+        {
+            Logger.LogInformation("Articles.razor | Received update: {Message}", message);
+            await RefreshData(); // 🔄 Adatok frissítése
+        });
+
+        hubConnection.Closed += async (error) =>
+        {
+            Logger.LogError(error, "Articles.razor | SignalR connection closed with error");
+            await Task.Delay(new Random().Next(0, 5) * 1000);
+            await hubConnection.StartAsync();
+            Logger.LogInformation("Articles.razor | SignalR connection restarted");
+        };
+
+        await hubConnection.StartAsync();
+        Logger.LogInformation("Articles.razor | SignalR connection started");
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadData()
     {
-        Logger.LogInformation("Loading articles data");
+        Logger.LogInformation("Articles.razor | Loading articles data");
+
         var result = await Sender.Send(new GetAllArticlesQuery());
+
         if (result is not null)
-            articles = result;
+        {
+            articles = new List<Article>(result); // 🔄 Új példány létrehozása
+            Logger.LogInformation("Articles list after update: {Articles}", string.Join(", ", articles.Select(a => a.Title)));
+        }
+        else
+        {
+            Logger.LogWarning("Articles.razor | No articles received from the server!");
+        }
     }
-    
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            Logger.LogInformation("Articles.razor | Disposing SignalR connection");
+            await hubConnection.DisposeAsync();
+        }
+    }
 
     private void EditHandler(int articleId)
     {
-        Logger.LogInformation("Navigating to edit article: {ArticleId}", articleId);
+        Logger.LogInformation("Articles.razor | Navigating to edit article: {ArticleId}", articleId);
         Navigation.NavigateTo($"/articles/edit-article/{articleId}");
     }
-
 }

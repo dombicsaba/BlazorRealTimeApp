@@ -1,5 +1,7 @@
-﻿using BlazorRealTimeApp.Domain.Articles;
+﻿using BlazorRealTimeApp.Application.Common.Interfaces;
+using BlazorRealTimeApp.Domain.Articles;
 using BlazorRealTimeApp.Infrastructure.Repositories;
+using BlazorRealTimeApp.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,10 +29,14 @@ namespace BlazorRealTimeApp.Infrastructure
             services.AddLogging(loggingBuilder =>
                 loggingBuilder.AddSerilog(dispose: true));
 
-            services.AddDbContext<ApplicationDbContext>(options =>
-                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+            services.AddDbContextFactory<ApplicationDbContext>(options =>
+                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
             services.AddScoped<IArticleRepository, ArticleRepository>();
+
+            // SignalR és az értesítő szolgáltatás regisztrálása
+            services.AddSignalR();
+            services.AddScoped<IRealTimeNotifier, SignalRNotifier>();
 
             return services;
         }
