@@ -2,6 +2,7 @@
 
 @inject ISender Sender
 @inject NavigationManager Navigation
+@inject ILogger<Articles> Logger
 @attribute [StreamRendering]
 @rendermode InteractiveServer
 
@@ -41,45 +42,29 @@ else
 
 @code {
     private List<Article> articles = new();
-    private HubConnection? hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
+        Logger.LogInformation("Initializing Articles component");
+
         await LoadData();
-
-        // SignalR kapcsolat létrehozása és eseménykezelő beállítása
-        hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.BaseUri + "datahub") // A SignalR Hub elérési útja
-            .Build();
-
-        hubConnection.On<string>("ReceiveUpdate", async (message) =>
-        {
-            Console.WriteLine("Frissítés érkezett: " + message);
-            await LoadData(); // 🔄 Újra betölti az adatokat
-            StateHasChanged(); // 📌 UI frissítése
-        });
-
-        await hubConnection.StartAsync();
+      
+        Logger.LogInformation("SignalR connection started");
     }
 
     private async Task LoadData()
     {
+        Logger.LogInformation("Loading articles data");
         var result = await Sender.Send(new GetAllArticlesQuery());
         if (result is not null)
             articles = result;
     }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (hubConnection is not null)
-        {
-            await hubConnection.DisposeAsync();
-        }
-    }
+    
 
     private void EditHandler(int articleId)
     {
-       Navigation.NavigateTo($"/articles/edit-article/{articleId}");
+        Logger.LogInformation("Navigating to edit article: {ArticleId}", articleId);
+        Navigation.NavigateTo($"/articles/edit-article/{articleId}");
     }
 
 }

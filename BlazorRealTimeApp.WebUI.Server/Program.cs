@@ -1,9 +1,6 @@
 using BlazorRealTimeApp.Application;
-using BlazorRealTimeApp.Application.Common.Interfaces;
 using BlazorRealTimeApp.Infrastructure;
 using BlazorRealTimeApp.WebUI.Server.Components;
-using BlazorRealTimeApp.WebUI.Server.Hubs;
-using BlazorRealTimeApp.WebUI.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,16 +10,27 @@ builder.Services.AddRazorComponents()
 
 // SignalR és az értesítõ szolgáltatás regisztrálása
 builder.Services.AddSignalR();
-builder.Services.AddScoped<IRealTimeNotifier, SignalRNotifier>();
 
 // Register services
 // Dependency injection
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(configuration: builder.Configuration);
 
+// CORS beállítások hozzáadása
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.WithOrigins("https://localhost:7105")
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
-app.MapHub<DataHub>("/datahub");
+app.UseCors();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
