@@ -10,5 +10,6 @@ namespace BlazorRealTimeApp.Domain.Articles
     {
         Task<List<Article>> GetAllArticlesAsync();
         Task<Article?> GetArticleByIdAsync(int id);
+        Task<Article> EditArticleAsync(Article? updatedArticle);
     }
 }

@@ -20,7 +20,8 @@ else
                 <th>Title</th>
                 <th>Content</th>
                 <th>Date Published</th>
-                <th>Is Published</th>                
+                <th>Is Published</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -31,6 +32,7 @@ else
                     <td>@article.Content</td>
                     <td>@article.DatePublished.ToShortDateString()</td>
                     <td>@article.IsPublished</td>
+                    <td><button class="btn btn-primary" @onclick="() => EditHandler(article.Id)">Edit</button></td>
                 </tr>
             }
         </tbody>
@@ -73,6 +75,11 @@ else
         {
             await hubConnection.DisposeAsync();
         }
+    }
+
+    private void EditHandler(int articleId)
+    {
+       Navigation.NavigateTo($"/articles/edit-article/{articleId}");
     }
 
 }

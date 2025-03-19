@@ -1,0 +1,63 @@
+﻿@page "/articles/edit-article"
+@page "/articles/edit-article/{articleId:int}"
+
+@inject ISender Sender
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Edit Article</PageTitle>
+<h3>Edit Article</h3>
+
+@if (Article == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h3>Edit @Article.Title</h3>
+
+    // Form to edit article
+    <EditForm Model="Article" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="form-group">
+            <label for="Title">Title</label>
+            <InputText id="Title" class="form-control" @bind-Value="Article.Title" />
+        </div>
+        <div class="form-group">
+            <label for="Content">Content</label>
+            <InputText id="Content" class="form-control" @bind-Value="Article.Content" />
+        </div>
+        <div class="form-group">
+            <label for="DatePublished">DatePublished</label>
+            <InputDate id="DatePublished" class="form-control" @bind-Value="Article.DatePublished" />
+        </div>
+        <div class="form-group">
+            <label for="IsPublished">IsPublished</label>
+            <InputCheckbox id="IsPublished" @bind-Value="Article.IsPublished" />
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int ArticleId { get; set; }
+    private Article? Article { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ArticleId != 0)
+        {
+            Article = await Sender.Send(new GetArticlesByIdQuery(ArticleId));
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        // Logic to handle form submission
+        await Sender.Send(new EditArticlesQuery(Article));
+        NavigationManager.NavigateTo("/articles");
+    }
+}
+
