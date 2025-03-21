@@ -18,9 +18,9 @@ namespace BlazorRealTimeApp.Infrastructure.Services
             _hubContext = hubContext;
         }
 
-        public async Task NotifyArticlesUpdated()
+        public async Task NotifyArticlesUpdated(string message)
         {
-            await _hubContext.Clients.All.SendAsync("ReceiveUpdate", "Articles table updated!");
+            await _hubContext.Clients.All.SendAsync("ReceiveUpdate", message);
         }
     }
 }

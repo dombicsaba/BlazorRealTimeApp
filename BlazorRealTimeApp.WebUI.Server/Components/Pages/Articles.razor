@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject ILogger<Articles> Logger
 @inject IJSRuntime JS
+@implements IAsyncDisposable
 @attribute [StreamRendering]
 @rendermode InteractiveServer
 
@@ -44,48 +45,61 @@ else
 @code {
     private List<Article> articles = new();
     private HubConnection? hubConnection;
+    private string? clientId;
+    private bool isRendered = false;
 
     protected override async Task OnInitializedAsync()
     {
         Logger.LogInformation("Articles.razor | Initializing Articles component");
-        Console.WriteLine("🔄 Articles.razor | Initializing Articles component"); // Kliens oldali log
 
-        await LoadData();
+        await LoadData(); 
+    }
 
-        Logger.LogInformation($"Articles.razor | Connecting to SignalR hub. URL: {Navigation.BaseUri}datahub");
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && hubConnection is null)
+        {
+            Logger.LogInformation($"Articles.razor | Connecting to SignalR hub. URL: {Navigation.BaseUri}datahub");
 
-        // SignalR kapcsolat létrehozása és eseménykezelő beállítása
-        hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.BaseUri + "datahub") // A SignalR Hub elérési útja
+            clientId = await JS.InvokeAsync<string>("getClientId");
+
+            if (string.IsNullOrEmpty(clientId))
+            {
+                clientId = Guid.NewGuid().ToString();
+                await JS.InvokeVoidAsync("setClientId", clientId);
+            }
+
+            hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.BaseUri + "datahub", options =>
+            {
+                options.Headers.Add("ClientIdentifier", clientId);
+            })
+            .WithAutomaticReconnect()
             .Build();
 
-        hubConnection.On<string>("ReceiveUpdate", async (message) =>
-        {
-            Logger.LogInformation("Articles.razor | Received update: {Message}", message);
-            await RefreshData(); // 🔄 Adatok frissítése
-        });
+            hubConnection.On<string>("ReceiveUpdate", async (message) =>
+             {
+                 await RefreshData(); // 🔄 Adatok frissítése
+                 Logger.LogInformation("Articles.razor | ClientId: {ClientId} | Received update: {Message}", clientId, message);
+             });
 
-        hubConnection.Closed += async (error) =>
-        {
-            Logger.LogError(error, "Articles.razor | SignalR connection closed with error");
-            await Task.Delay(new Random().Next(0, 5) * 1000);
             await hubConnection.StartAsync();
-            Logger.LogInformation("Articles.razor | SignalR connection restarted");
-        };
-
-        await hubConnection.StartAsync();
-        Logger.LogInformation("Articles.razor | SignalR connection started");
+            Logger.LogInformation("Articles.razor | SignalR connection started");
+            isRendered = true;
+            StateHasChanged();
+        }
     }
 
     private async Task RefreshData()
     {
         await LoadData();
+        Logger.LogInformation("Articles.razor | ClientId: {ClientId} | Refreshing articles data", clientId);
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadData()
     {
-        Logger.LogInformation("Articles.razor | Loading articles data");
+        Logger.LogInformation("Articles.razor | ClientId: {ClientId} | Loading articles data", clientId);
 
         var result = await Sender.Send(new GetAllArticlesQuery());
 
@@ -104,8 +118,9 @@ else
     {
         if (hubConnection is not null)
         {
-            Logger.LogInformation("Articles.razor | Disposing SignalR connection");
             await hubConnection.DisposeAsync();
+            hubConnection = null;
+            Logger.LogInformation("Articles.razor | Disposing SignalR connection");
         }
     }
 

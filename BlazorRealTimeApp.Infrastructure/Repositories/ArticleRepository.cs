@@ -30,7 +30,7 @@ namespace BlazorRealTimeApp.Infrastructure.Repositories
                 throw new Exception("Article is null");
             }
             
-            _logger.Information("Editing article: {updatedArticle}", updatedArticle);
+            _logger.Information("ArticleRepository.EditArticleAsync() | Editing article: {updatedArticle}", updatedArticle);
 
             using var context = _contextFactory.CreateDbContext();
             var article = await context.Articles.FirstOrDefaultAsync(x => x.Id == updatedArticle.Id);
@@ -47,23 +47,23 @@ namespace BlazorRealTimeApp.Infrastructure.Repositories
             article.DateUpdated = DateTime.Now;
 
             await context.SaveChangesAsync();
-            _logger.Information("Article with ID: {ArticleId} updated successfully", article.Id);
+            _logger.Information("ArticleRepository.EditArticleAsync() | Article with ID: {ArticleId} updated successfully", article.Id);
             // Értesítse a klienseket a változásról
-            await _notifier.NotifyArticlesUpdated();
+            //await _notifier.NotifyArticlesUpdated("Article updated");
 
             return article;
         }
 
         public async Task<List<Article>> GetAllArticlesAsync()
         {
-            _logger.Information("Getting all articles");
+            _logger.Information("ArticleRepository.GetAllArticlesAsync() | Getting all articles");
             using var context = _contextFactory.CreateDbContext();
             return await context.Articles.ToListAsync();
         }
 
         public async Task<Article?> GetArticleByIdAsync(int id)
         {
-            _logger.Information("Getting article by id: {id}", id);
+            _logger.Information("ArticleRepository.GetArticleByIdAsync() | Getting article by id: {id}", id);
             using var context = _contextFactory.CreateDbContext();
             return await context.Articles.FindAsync(id);
         }

@@ -15,7 +15,7 @@ namespace BlazorRealTimeApp.Infrastructure.Hubs
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly ILogger<DataHub> _logger;
-        private static readonly ConcurrentDictionary<string, string> ConnectedClients = new();
+        private static ConcurrentDictionary<string, string> ConnectedClients = new();
 
 
         public DataHub(IDbContextFactory<ApplicationDbContext> contextFactory, ILogger<DataHub> logger)
@@ -26,54 +26,62 @@ namespace BlazorRealTimeApp.Infrastructure.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            ConnectedClients[Context.ConnectionId] = Context.ConnectionId;
-            _logger.LogInformation("Client connected: {ConnectionId}", Context.ConnectionId);
-            await base.OnConnectedAsync();
+            var httpContext = Context.GetHttpContext();
+            var clientId = httpContext?.Request.Headers["ClientIdentifier"].ToString();
+
+            if (!string.IsNullOrEmpty(clientId))
+            {
+                lock (ConnectedClients)
+                {
+                    ConnectedClients[clientId] = Context.ConnectionId;
+                    _logger.LogInformation("DataHub.OnConnectedAsync() | Client connected: {ClientId}", clientId);
+                }
+            }
+
+            foreach (var client in ConnectedClients) 
+            {
+                _logger.LogInformation("DataHub.OnConnectedAsync() | Connected client: {Client.Key}", client.Key);
+            }
+
+                await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            ConnectedClients.TryRemove(Context.ConnectionId, out _);
-            _logger.LogInformation("Client disconnected: {ConnectionId}", Context.ConnectionId);
-            if (exception != null)
+            var clientToRemove = ConnectedClients.FirstOrDefault(x => x.Value == Context.ConnectionId).Key;
+            if (!string.IsNullOrEmpty(clientToRemove))
             {
-                _logger.LogError(exception, "Client disconnected with error");
+                lock (ConnectedClients)                
+                {
+                    ConnectedClients.TryRemove(clientToRemove, out _);
+                    _logger.LogInformation("DataHub.OnDisconnectedAsync() | Client disconnected: {clientToRemove}, Exception: {Exception}", clientToRemove, exception);
+                }
             }
+
+            if (ConnectedClients.Count == 0)
+                _logger.LogInformation("DataHub.OnDisconnectedAsync() | Remaining client: No clients connected.");
+
+            foreach (var client in ConnectedClients) 
+            {
+                _logger.LogInformation("DataHub.OnDisconnectedAsync() | Remaining client: {Client.Key}", client.Key);
+            }
+
             await base.OnDisconnectedAsync(exception);
         }
 
         public async Task SendUpdate(string message)
         {
-            _logger.LogInformation("Sending update to all clients: {Message}", message);
+            _logger.LogInformation("DataHub.SendUpdate() | Sending update to all clients: {Message}", message);
 
-            using var context = _contextFactory.CreateDbContext();
-            var articles = await context.Articles.ToListAsync();
+            //using var context = _contextFactory.CreateDbContext();
+            //var articles = await context.Articles.ToListAsync();
 
-            foreach (var clientId in ConnectedClients.Keys)
+            foreach (var client in ConnectedClients)
             {
-                _logger.LogInformation("Notifying client: {ClientId}", clientId);
+                _logger.LogInformation("DataHub.SendUpdate() | Notifying client: {Client.Key}", client.Key);
             }
 
             await Clients.All.SendAsync("ReceiveUpdate", message);
         }
-
-
-        //public async Task SendUpdate(string message)
-        //{
-        //    _logger.LogInformation("Sending update to {ClientCount} clients: {Message}", ConnectedClients.Count, message);
-
-        //    foreach (var clientId in ConnectedClients.Keys)
-        //    {
-        //        _logger.LogInformation("Notifying client: {ClientId}", clientId);
-        //    }
-
-        //    await Clients.All.SendAsync("ReceiveUpdate", message);
-        //}
-
-        //public async Task SendUpdate(string message)
-        //{
-        //    _logger.LogInformation("Sending message: {Message}", message);
-        //    await Clients.All.SendAsync("ReceiveUpdate", message);
-        //}
     }
 }

@@ -8,6 +8,6 @@ namespace BlazorRealTimeApp.Application.Common.Interfaces
 {
     public interface IRealTimeNotifier
     {
-        Task NotifyArticlesUpdated();
+        Task NotifyArticlesUpdated(string message);
     }
 }

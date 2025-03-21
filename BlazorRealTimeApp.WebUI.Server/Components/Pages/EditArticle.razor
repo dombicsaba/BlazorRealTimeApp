@@ -3,6 +3,9 @@
 
 @inject ISender Sender
 @inject NavigationManager NavigationManager
+@inject ILogger<Articles> Logger
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 @rendermode InteractiveServer
 
 <PageTitle>Edit Article</PageTitle>
@@ -44,12 +47,70 @@ else
     [Parameter]
     public int ArticleId { get; set; }
     private Article? Article { get; set; }
+    private HubConnection? hubConnection;
+    private string? clientId;
+    private bool isRendered = false;
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && hubConnection is null)
+        {
+            clientId = await JS.InvokeAsync<string>("getClientId");
+            
+            if (string.IsNullOrEmpty(clientId))
+            {
+                clientId = Guid.NewGuid().ToString();
+                await JS.InvokeVoidAsync("setClientId", clientId);
+            }
+            
+            hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.BaseUri + "datahub", options =>
+            {
+                options.Headers.Add("ClientIdentifier", clientId);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+            hubConnection.On<string>("ReceiveMessage", async (message) =>
+            {
+                await RefreshData();
+                Logger.LogInformation("EditArticle.razor.OnAfterRenderAsync() | Received update: {Message}", message);
+            });
+
+            await hubConnection.StartAsync();
+
+            Logger.LogInformation("EditArticle.razor.OnAfterRenderAsync() | SignalR connection started");
+            isRendered = true;
+        }
+    }
+
+    private async Task LoadData()
     {
         if (ArticleId != 0)
         {
             Article = await Sender.Send(new GetArticlesByIdQuery(ArticleId));
+        }
+        Logger.LogInformation("EditArticle.LoadData() | Initializing EditArticle component");
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+            hubConnection = null;
+            Logger.LogInformation("EditArticle.razor.DisposeAsync() | Disposing SignalR connection");
         }
     }
 
@@ -57,7 +118,20 @@ else
     {
         // Logic to handle form submission
         await Sender.Send(new EditArticlesQuery(Article));
+
+        //Értesítse a klienseket a változásról
+        await SendMessage();
+
         NavigationManager.NavigateTo("/articles");
     }
+
+    private async Task SendMessage()
+    {
+        if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
+        {
+            await hubConnection.InvokeAsync("SendUpdate", "Frissítés érkezett!");
+        }
+    }
+
 }
 
