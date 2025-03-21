@@ -1,5 +1,6 @@
 ﻿using BlazorRealTimeApp.Application.Common.Interfaces;
 using BlazorRealTimeApp.Domain.Articles;
+using BlazorRealTimeApp.Infrastructure.Interceptors;
 using BlazorRealTimeApp.Infrastructure.Repositories;
 using BlazorRealTimeApp.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -29,8 +30,11 @@ namespace BlazorRealTimeApp.Infrastructure
             services.AddLogging(loggingBuilder =>
                 loggingBuilder.AddSerilog(dispose: true));
 
-            services.AddDbContextFactory<ApplicationDbContext>(options =>
-                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+            services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, options) =>
+            {
+                options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"))
+                       .AddInterceptors(new SaveChangesNotifierInterceptor(serviceProvider));
+            });
 
             services.AddScoped<IArticleRepository, ArticleRepository>();
 

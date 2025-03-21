@@ -1,4 +1,5 @@
-﻿using BlazorRealTimeApp.Domain.Articles;
+﻿using BlazorRealTimeApp.Application.Common.Interfaces;
+using BlazorRealTimeApp.Domain.Articles;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,11 +11,12 @@ namespace BlazorRealTimeApp.Infrastructure
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) 
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
 
-        public DbSet<Article> Articles { get; set; }      
+        public DbSet<Article> Articles { get; set; }
+
     }
 }

@@ -14,13 +14,11 @@ namespace BlazorRealTimeApp.Infrastructure.Repositories
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly ILogger _logger;
-        private readonly IRealTimeNotifier _notifier;
 
-        public ArticleRepository(IDbContextFactory<ApplicationDbContext> contextFactory, IRealTimeNotifier notifier)
+        public ArticleRepository(IDbContextFactory<ApplicationDbContext> contextFactory)
         {
             _contextFactory = contextFactory;
             _logger = Log.ForContext<ArticleRepository>();
-            _notifier = notifier;
         }
 
         public async Task<Article> EditArticleAsync(Article? updatedArticle)
@@ -47,9 +45,7 @@ namespace BlazorRealTimeApp.Infrastructure.Repositories
             article.DateUpdated = DateTime.Now;
 
             await context.SaveChangesAsync();
-            _logger.Information("ArticleRepository.EditArticleAsync() | Article with ID: {ArticleId} updated successfully", article.Id);
-            // Értesítse a klienseket a változásról
-            //await _notifier.NotifyArticlesUpdated("Article updated");
+            _logger.Information("ArticleRepository.EditArticleAsync() | Article with ID: {ArticleId} updated successfully", article.Id);           
 
             return article;
         }
