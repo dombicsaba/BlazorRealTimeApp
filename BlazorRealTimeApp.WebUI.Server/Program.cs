@@ -2,6 +2,7 @@ using BlazorRealTimeApp.Application;
 using BlazorRealTimeApp.Infrastructure;
 using BlazorRealTimeApp.Infrastructure.Hubs;
 using BlazorRealTimeApp.WebUI.Server.Components;
+using Radzen;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,12 @@ builder.Services.AddRazorComponents()
 // Dependency injection
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(configuration: builder.Configuration);
+
+// Radzen szolgáltatások hozzáadása
+builder.Services.AddScoped<DialogService>();
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<TooltipService>();
+builder.Services.AddScoped<ContextMenuService>();
 
 // CORS beállítások hozzáadása
 builder.Services.AddCors(options =>
