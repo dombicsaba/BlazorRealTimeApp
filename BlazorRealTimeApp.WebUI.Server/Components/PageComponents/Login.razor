@@ -1,20 +1,65 @@
 ﻿@page "/login"
+@using BlazorRealTimeApp.Application.Common.Interfaces
+@using BlazorRealTimeApp.Application.Models
+@using System.ComponentModel.DataAnnotations
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ILogger<Login> Logger
+@attribute [StreamRendering]
+@rendermode InteractiveServer
 
 
-
-
-<RadzenStack Gap="0" class="rz-my-12 rz-mx-auto rz-border-radius-6 rz-shadow-10" Style="width: 100%; max-width: 400px; overflow: hidden;">
-    <RadzenCard class="rz-shadow-0 rz-border-radius-0 rz-background-color-info rz-p-12" style="text-align: center;">
-        <RadzenText TextStyle="TextStyle.DisplayH3" TagName="TagName.H2" class="rz-color-white rz-mb-0">Login</RadzenText>
-    </RadzenCard>
-    <RadzenCard class="rz-shadow-0 rz-p-12">
-        <RadzenTemplateForm Data=@("SimpleLogin") Action="http://www.google.com">
-            <RadzenLogin AllowRegister="false" AllowResetPassword="true" />
-        </RadzenTemplateForm>
-    </RadzenCard>
-</RadzenStack>
-
+<RadzenCard class="rz-my-12 rz-mx-auto rz-p-4 rz-p-md-12" style="max-width: 600px;">
+    <RadzenTemplateForm Data=@("localization")>
+        <RadzenLogin AllowRegister="true" AllowResetPassword="true"
+                     AllowRememberMe="true"
+                     LoginText="Bejelentkezés" UserText="Felhasználónév" PasswordText="Jelszó"
+                     UserRequired="Felhasználónév szükséges"
+                     PasswordRequired="Jelszó szükséges"
+                     RegisterText="Regisztráció"
+                     RegisterMessageText="Még nincs fiókod?"
+                     ResetPasswordText="Jelszó visszaállítása"
+                     RememberMeText="Emlékezz rám"
+                     Login="@OnLogin"
+                     Register="@OnRegister" />
+    </RadzenTemplateForm>
+</RadzenCard>
 
 @code {
+    private LoginRequest loginRequest = new();
+    private string? errorMessage;
 
+    private async Task OnLogin(LoginArgs args)
+    {
+        loginRequest.Username = args.Username;
+        loginRequest.Password = args.Password;
+
+        await HandleValidSubmit();
+    }
+
+    private async Task OnRegister()
+    {
+        Logger.LogInformation("Login.razor | Navigating to registration page");
+        Navigation.NavigateTo("/register");
+        await Task.CompletedTask;
+    }
+    
+    private async Task HandleValidSubmit()
+    {
+        Logger.LogInformation("Login.razor | Attempting to log in user: {Username}", loginRequest.Username);
+
+        var result = await AuthService.LoginAsync(loginRequest);
+        if (result)
+        {
+            Logger.LogInformation("Login.razor | User {Username} logged in successfully", loginRequest.Username);
+            Navigation.NavigateTo("/articles");
+        }
+        else
+        {
+            Logger.LogWarning("Login.razor | Failed login attempt for user: {Username}", loginRequest.Username);
+            errorMessage = "Invalid username or password";
+        }
+    }
 }
+
+

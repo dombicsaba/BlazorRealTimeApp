@@ -42,6 +42,9 @@ namespace BlazorRealTimeApp.Infrastructure
             services.AddSignalR();
             services.AddScoped<IRealTimeNotifier, SignalRNotifier>();
 
+            // AuthService regisztrálása
+            services.AddScoped<IAuthService, AuthService>();
+
             return services;
         }
     }

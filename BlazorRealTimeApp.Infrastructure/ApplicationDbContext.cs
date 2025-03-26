@@ -1,5 +1,6 @@
 ﻿using BlazorRealTimeApp.Application.Common.Interfaces;
 using BlazorRealTimeApp.Domain.Articles;
+using BlazorRealTimeApp.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,6 @@ namespace BlazorRealTimeApp.Infrastructure
         }
 
         public DbSet<Article> Articles { get; set; }
-
+        public DbSet<User> Users { get; set; }
     }
 }
